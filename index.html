@@ -1,85 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Snake Game</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Typing Speed Game</title>
+
   <style>
     body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: white;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      background: black;
       margin: 0;
     }
-    canvas {
-      background: #111;
-      border: 2px solid white;
+
+    .game {
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    #sentence {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100px;
+      font-size: 18px;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      resize: none;
+    }
+
+    .stats {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .correct {
+      color: #4caf50;
+    }
+
+    .incorrect {
+      color: #f44336;
     }
   </style>
 </head>
 <body>
 
-<canvas id="game" width="400" height="400"></canvas>
+  <div class="game">
+    <h1>Typing Speed Game</h1>
+    <p id="sentence"></p>
+    <textarea id="input" placeholder="Start typing here..."></textarea>
 
-<script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+    <div class="stats">
+      <div>⏱ Time: <span id="time">0</span>s</div>
+      <div>⚡ WPM: <span id="wpm">0</span></div>
+      <div>🎯 Accuracy: <span id="accuracy">100</span>%</div>
+    </div>
 
-const grid = 20;
-let snake = [{x: 200, y: 200}];
-let dx = grid, dy = 0;
-let food = spawnFood();
-let score = 0;
+    <button onclick="resetGame()">Restart</button>
+  </div>
 
-function spawnFood() {
-  return {
-    x: Math.floor(Math.random() * 20) * grid,
-    y: Math.floor(Math.random() * 20) * grid
-  };
-}
+  <script>
+    const sentences = [
+      "The quick brown fox jumps over the lazy dog",
+      "Typing fast takes practice and focus",
+      "JavaScript makes websites interactive",
+      "GitHub Pages is great for hosting projects",
+      "Practice every day to improve your skills"
+    ];
 
-document.addEventListener("keydown", e => {
-  if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -grid; }
-  if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = grid; }
-  if (e.key === "ArrowLeft" && dx === 0) { dx = -grid; dy = 0; }
-  if (e.key === "ArrowRight" && dx === 0) { dx = grid; dy = 0; }
-});
+    const sentenceEl = document.getElementById("sentence");
+    const inputEl = document.getElementById("input");
+    const timeEl = document.getElementById("time");
+    const wpmEl = document.getElementById("wpm");
+    const accuracyEl = document.getElementById("accuracy");
 
-function loop() {
-  const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+    let startTime = null;
+    let timerInterval = null;
+    let currentSentence = "";
 
-  if (
-    head.x < 0 || head.y < 0 ||
-    head.x >= canvas.width || head.y >= canvas.height ||
-    snake.some(s => s.x === head.x && s.y === head.y)
-  ) {
-    alert("Game Over! Score: " + score);
-    snake = [{x: 200, y: 200}];
-    dx = grid; dy = 0;
-    score = 0;
-    food = spawnFood();
-    return;
-  }
+    function startGame() {
+      currentSentence = sentences[Math.floor(Math.random() * sentences.length)];
+      sentenceEl.innerHTML = "";
+      currentSentence.split("").forEach(char => {
+        const span = document.createElement("span");
+        span.textContent = char;
+        sentenceEl.appendChild(span);
+      });
 
-  snake.unshift(head);
+      inputEl.value = "";
+      startTime = null;
+      timeEl.textContent = 0;
+      wpmEl.textContent = 0;
+      accuracyEl.textContent = 100;
+      clearInterval(timerInterval);
+    }
 
-  if (head.x === food.x && head.y === food.y) {
-    score++;
-    food = spawnFood();
-  } else {
-    snake.pop();
-  }
+    inputEl.addEventListener("input", () => {
+      if (!startTime) {
+        startTime = new Date();
+        timerInterval = setInterval(updateTime, 1000);
+      }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "red";
-  ctx.fillRect(food.x, food.y, grid, grid);
-  ctx.fillStyle = "lime";
-  snake.forEach(p => ctx.fillRect(p.x, p.y, grid, grid));
-}
+      const input = inputEl.value.split("");
+      const chars = sentenceEl.querySelectorAll("span");
 
-setInterval(loop, 100);
-</script>
+      let correct = 0;
+
+      chars.forEach((char, index) => {
+        if (input[index] == null) {
+          char.className = "";
+        } else if (input[index] === char.textContent) {
+          char.className = "correct";
+          correct++;
+        } else {
+          char.className = "incorrect";
+        }
+      });
+
+      const accuracy = Math.round((correct / input.length) * 100) || 100;
+      accuracyEl.textContent = accuracy;
+
+      if (input.join("") === currentSentence) {
+        clearInterval(timerInterval);
+        calculateWPM();
+      }
+    });
+
+    function updateTime() {
+      const time = Math.floor((new Date() - startTime) / 1000);
+      timeEl.textContent = time;
+    }
+
+    function calculateWPM() {
+      const timeMinutes = (new Date() - startTime) / 60000;
+      const words = currentSentence.split(" ").length;
+      const wpm = Math.round(words / timeMinutes);
+      wpmEl.textContent = wpm;
+    }
+
+    function resetGame() {
+      startGame();
+    }
+
+    startGame();
+  </script>
 
 </body>
 </html>
